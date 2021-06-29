@@ -3,7 +3,8 @@ package jiebago_test
 import (
 	"fmt"
 
-	"github.com/wangbin/jiebago"
+	"github.com/mealleader/jiebago"
+	"github.com/mealleader/jiebago/finalseg"
 )
 
 func Example() {
@@ -33,6 +34,24 @@ func Example() {
 	// 【精确模式】： 我 / 来到 / 北京 / 清华大学 /
 	// 【新词识别】： 他 / 来到 / 了 / 网易 / 杭研 / 大厦 /
 	// 【搜索引擎模式】： 小明 / 硕士 / 毕业 / 于 / 中国 / 科学 / 学院 / 科学院 / 中国科学院 / 计算 / 计算所 / ， / 后 / 在 / 日本 / 京都 / 大学 / 日本京都大学 / 深造 /
+}
+
+func Example_cutHMM() {
+	var seg jiebago.Segmenter
+	seg.LoadDictionary("sg_dict.txt")
+	finalseg.LoadProbs("sg_prob_trans.py", "sg_prob_start.py", "sg_prob_emit.py")
+
+	print := func(ch <-chan string) {
+		for word := range ch {
+			fmt.Printf(" %s /", word)
+		}
+		fmt.Println()
+	}
+
+	sentence := "ready stock silicone wrist-band band strap for samsung-gear-fit-2 sm r360 smart watch"
+
+	print(seg.Cut(sentence, true))
+	// assert.Equal(t, "ready", seg.Cut(sentence, true))
 }
 
 func Example_suggestFrequency() {

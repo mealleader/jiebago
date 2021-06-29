@@ -2,8 +2,9 @@ package finalseg
 
 import (
 	"fmt"
-	"jiebago/util"
 	"sort"
+
+	"github.com/mealleader/jiebago/util"
 )
 
 const minFloat = -3.14e100

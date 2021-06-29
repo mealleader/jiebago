@@ -1,9 +1,10 @@
 package jiebago
 
 import (
-	"jiebago/dictionary"
 	"math"
 	"sync"
+
+	"github.com/mealleader/jiebago/dictionary"
 )
 
 // A Dictionary represents a thread-safe dictionary used for word segmentation.
