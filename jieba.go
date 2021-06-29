@@ -6,17 +6,18 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wangbin/jiebago/dictionary"
-	"github.com/wangbin/jiebago/finalseg"
-	"github.com/wangbin/jiebago/util"
+	"jiebago/dictionary"
+	"jiebago/finalseg"
+	"jiebago/util"
 )
 
 var (
-	reEng         = regexp.MustCompile(`[[:alnum:]]`)
-	reHanCutAll   = regexp.MustCompile(`(\p{Han}+)`)
-	reSkipCutAll  = regexp.MustCompile(`[^[:alnum:]+#\n]`)
-	reHanDefault  = regexp.MustCompile(`([\p{Han}+[:alnum:]+#&\._]+)`)
-	reSkipDefault = regexp.MustCompile(`(\r\n|\s)`)
+	reEng             = regexp.MustCompile(`[[:alnum:]]`)
+	reHanCutAll       = regexp.MustCompile(`(\p{Han}+)`)
+	reSkipCutAll      = regexp.MustCompile(`[^[:alnum:]+#\n]`)
+	reHanDefault      = regexp.MustCompile(`([\p{Han}+[:alnum:]+#&\._]+)`)
+	reSkipDefault     = regexp.MustCompile(`(\r\n|\s)`)
+	reLatinHanDefault = regexp.MustCompile(`([\p{Han}a-zA-Z0-9À-ÿ+#&\._% \-\/]+)`)
 )
 
 // Segmenter is a Chinese words segmentation struct.
@@ -271,11 +272,11 @@ func (seg *Segmenter) Cut(sentence string, hmm bool) <-chan string {
 	}
 
 	go func() {
-		for _, block := range util.RegexpSplit(reHanDefault, sentence, -1) {
+		for _, block := range util.RegexpSplit(reLatinHanDefault, sentence, -1) {
 			if len(block) == 0 {
 				continue
 			}
-			if reHanDefault.MatchString(block) {
+			if reLatinHanDefault.MatchString(block) {
 				for x := range cut(block) {
 					result <- x
 				}

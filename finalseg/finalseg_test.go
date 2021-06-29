@@ -2,6 +2,7 @@ package finalseg
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -14,9 +15,10 @@ func chanToArray(ch chan string) []string {
 }
 
 func TestViterbi(t *testing.T) {
-	obs := "我们是程序员"
+	sentence := "ready stock silicone wrist-band band strap for samsung-gear-fit-2 sm r360 smart watch"
+	obs := strings.Split(sentence, " ")
 	states := []byte{'B', 'M', 'E', 'S'}
-	prob, path := viterbi([]rune(obs), states)
+	prob, path := viterbi(obs, states)
 	if math.Abs(prob+39.68824128493802) > 1e-10 {
 		t.Fatal(prob)
 	}

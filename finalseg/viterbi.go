@@ -2,6 +2,7 @@ package finalseg
 
 import (
 	"fmt"
+	"jiebago/util"
 	"sort"
 )
 
@@ -9,7 +10,9 @@ const minFloat = -3.14e100
 
 var (
 	prevStatus = make(map[byte][]byte)
-	probStart  = make(map[byte]float64)
+	ProbStart  = make(map[byte]float64)
+	ProbEmit   = make(map[byte]map[string]float64)
+	ProbTrans  = make(map[byte]map[byte]float64)
 )
 
 func init() {
@@ -17,10 +20,6 @@ func init() {
 	prevStatus['M'] = []byte{'M', 'B'}
 	prevStatus['S'] = []byte{'S', 'E'}
 	prevStatus['E'] = []byte{'B', 'M'}
-	probStart['B'] = -0.26268660809250016
-	probStart['E'] = -3.14e+100
-	probStart['M'] = -3.14e+100
-	probStart['S'] = -1.4652633398537678
 }
 
 type probState struct {
@@ -49,15 +48,21 @@ func (ps probStates) Swap(i, j int) {
 	ps[i], ps[j] = ps[j], ps[i]
 }
 
-func viterbi(obs []rune, states []byte) (float64, []byte) {
+func LoadProbs(transPath, startPath, emitPath string) {
+	ProbStart = util.LoadProbStartFromJsonFile(startPath)
+	ProbTrans = util.LoadProbTransFromJsonFile(transPath)
+	ProbEmit = util.LoadProbEmitFromJsonFile(emitPath)
+}
+
+func viterbi(obs []string, states []byte) (float64, []byte) {
 	path := make(map[byte][]byte)
 	V := make([]map[byte]float64, len(obs))
 	V[0] = make(map[byte]float64)
 	for _, y := range states {
-		if val, ok := probEmit[y][obs[0]]; ok {
-			V[0][y] = val + probStart[y]
+		if val, ok := ProbEmit[y][obs[0]]; ok {
+			V[0][y] = val + ProbStart[y]
 		} else {
-			V[0][y] = minFloat + probStart[y]
+			V[0][y] = minFloat + ProbStart[y]
 		}
 		path[y] = []byte{y}
 	}
@@ -68,14 +73,14 @@ func viterbi(obs []rune, states []byte) (float64, []byte) {
 		for _, y := range states {
 			ps0 := make(probStates, 0)
 			var emP float64
-			if val, ok := probEmit[y][obs[t]]; ok {
+			if val, ok := ProbEmit[y][obs[t]]; ok {
 				emP = val
 			} else {
 				emP = minFloat
 			}
 			for _, y0 := range prevStatus[y] {
 				var transP float64
-				if tp, ok := probTrans[y0][y]; ok {
+				if tp, ok := ProbTrans[y0][y]; ok {
 					transP = tp
 				} else {
 					transP = minFloat

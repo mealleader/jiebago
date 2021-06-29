@@ -3,34 +3,37 @@ package finalseg
 
 import (
 	"regexp"
+	"strings"
 )
 
 var (
-	reHan  = regexp.MustCompile(`\p{Han}+`)
-	reSkip = regexp.MustCompile(`(\d+\.\d+|[a-zA-Z0-9]+)`)
+	reHan      = regexp.MustCompile(`\p{Han}+`)
+	reSkip     = regexp.MustCompile(`(\d+\.\d+|[a-zA-Z0-9]+)`)
+	reLatinHan = regexp.MustCompile("([\\p{Han}a-zA-Z0-9À-ÿ+#&._% -/]+)")
 )
 
 func cutHan(sentence string) chan string {
 	result := make(chan string)
 	go func() {
-		runes := []rune(sentence)
-		_, posList := viterbi(runes, []byte{'B', 'M', 'E', 'S'})
+		// runes := []rune(sentence)
+		tokens := strings.Split(sentence, " ")
+		_, posList := viterbi(tokens, []byte{'B', 'M', 'E', 'S'})
 		begin, next := 0, 0
-		for i, char := range runes {
+		for i, t := range tokens {
 			pos := posList[i]
 			switch pos {
 			case 'B':
 				begin = i
 			case 'E':
-				result <- string(runes[begin : i+1])
+				result <- strings.Join(tokens[begin:i+1], " ")
 				next = i + 1
 			case 'S':
-				result <- string(char)
+				result <- t
 				next = i + 1
 			}
 		}
-		if next < len(runes) {
-			result <- string(runes[next:])
+		if next < len(tokens) {
+			result <- strings.Join(tokens[next:], " ")
 		}
 		close(result)
 	}()
@@ -47,7 +50,7 @@ func Cut(sentence string) chan string {
 	var nonhanLoc []int
 	go func() {
 		for {
-			hanLoc = reHan.FindStringIndex(s)
+			hanLoc = reLatinHan.FindStringIndex(s)
 			if hanLoc == nil {
 				if len(s) == 0 {
 					break

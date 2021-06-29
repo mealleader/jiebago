@@ -1,7 +1,12 @@
 // Package util contains some util functions used by jiebago.
 package util
 
-import "regexp"
+import (
+	"encoding/json"
+	"io/ioutil"
+	"os"
+	"regexp"
+)
 
 /*
 RegexpSplit split slices s into substrings separated by the expression and
@@ -50,4 +55,43 @@ func RegexpSplit(re *regexp.Regexp, s string, n int) []string {
 	}
 
 	return strings
+}
+
+func LoadProbStartFromJsonFile(path string) map[byte]float64 {
+	var probMap map[byte]float64
+
+	fd, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer fd.Close()
+	bytes, _ := ioutil.ReadAll(fd)
+	json.Unmarshal(bytes, &probMap)
+	return probMap
+}
+
+func LoadProbTransFromJsonFile(path string) map[byte]map[byte]float64 {
+	var probMap map[byte]map[byte]float64
+
+	fd, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer fd.Close()
+	bytes, _ := ioutil.ReadAll(fd)
+	json.Unmarshal(bytes, &probMap)
+	return probMap
+}
+
+func LoadProbEmitFromJsonFile(path string) map[byte]map[string]float64 {
+	var probMap map[byte]map[string]float64
+
+	fd, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer fd.Close()
+	bytes, _ := ioutil.ReadAll(fd)
+	json.Unmarshal(bytes, &probMap)
+	return probMap
 }
