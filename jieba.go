@@ -106,7 +106,37 @@ func (seg *Segmenter) LoadUserDictionary(fileName string) error {
 	return seg.dict.loadDictionary(fileName)
 }
 
-func (seg *Segmenter) dag(runes []rune) map[int][]int {
+func (seg *Segmenter) dag(runes []string) map[int][]int {
+	dag := make(map[int][]int)
+	n := len(runes)
+	var frag string
+	var i int
+	for k := 0; k < n; k++ {
+		dag[k] = make([]int, 0)
+		i = k
+		frag = strings.Join(runes[k:k+1], "-")
+		for {
+			freq, ok := seg.dict.Frequency(frag)
+			if !ok {
+				break
+			}
+			if freq > 0.0 {
+				dag[k] = append(dag[k], i)
+			}
+			i++
+			if i >= n {
+				break
+			}
+			frag = strings.Join(runes[k:i+1], "-")
+		}
+		if len(dag[k]) == 0 {
+			dag[k] = append(dag[k], k)
+		}
+	}
+	return dag
+}
+
+func (seg *Segmenter) dag_rune(runes []rune) map[int][]int {
 	dag := make(map[int][]int)
 	n := len(runes)
 	var frag []rune
@@ -141,8 +171,33 @@ type route struct {
 	index     int
 }
 
-func (seg *Segmenter) calc(runes []rune) map[int]route {
+func (seg *Segmenter) calc(runes []string) map[int]route {
 	dag := seg.dag(runes)
+	n := len(runes)
+	rs := make(map[int]route)
+	rs[n] = route{frequency: 0.0, index: 0}
+	var r route
+	for idx := n - 1; idx >= 0; idx-- {
+		for _, i := range dag[idx] {
+			if freq, ok := seg.dict.Frequency(strings.Join(runes[idx:i+1], "-")); ok {
+				r = route{frequency: math.Log(freq) - seg.dict.logTotal + rs[i+1].frequency, index: i}
+			} else {
+				r = route{frequency: math.Log(1.0) - seg.dict.logTotal + rs[i+1].frequency, index: i}
+			}
+			if v, ok := rs[idx]; !ok {
+				rs[idx] = r
+			} else {
+				if v.frequency < r.frequency || (v.frequency == r.frequency && v.index < r.index) {
+					rs[idx] = r
+				}
+			}
+		}
+	}
+	return rs
+}
+
+func (seg *Segmenter) calc_rune(runes []rune) map[int]route {
+	dag := seg.dag_rune(runes)
 	n := len(runes)
 	rs := make(map[int]route)
 	rs[n] = route{frequency: 0.0, index: 0}
@@ -171,23 +226,25 @@ type cutFunc func(sentence string) <-chan string
 func (seg *Segmenter) cutDAG(sentence string) <-chan string {
 	result := make(chan string)
 	go func() {
-		runes := []rune(sentence)
-		routes := seg.calc(runes)
+		// runes := []rune(sentence)
+		tokens := strings.Split(sentence, " ")
+		routes := seg.calc(tokens)
 		var y int
-		length := len(runes)
-		var buf []rune
+		length := len(tokens)
+		var buf []string
 		for x := 0; x < length; {
 			y = routes[x].index + 1
-			frag := runes[x:y]
+			frag := tokens[x:y]
 			if y-x == 1 {
 				buf = append(buf, frag...)
 			} else {
 				if len(buf) > 0 {
-					bufString := string(buf)
+					bufString := strings.Join(buf, " ")
+					checkString := strings.Join(buf, "-")
 					if len(buf) == 1 {
 						result <- bufString
 					} else {
-						if v, ok := seg.dict.Frequency(bufString); !ok || v == 0.0 {
+						if v, ok := seg.dict.Frequency(checkString); !ok || v == 0.0 {
 							for x := range finalseg.Cut(bufString) {
 								result <- x
 							}
@@ -197,19 +254,20 @@ func (seg *Segmenter) cutDAG(sentence string) <-chan string {
 							}
 						}
 					}
-					buf = make([]rune, 0)
+					buf = make([]string, 0)
 				}
-				result <- string(frag)
+				result <- strings.Join(frag, " ")
 			}
 			x = y
 		}
 
 		if len(buf) > 0 {
-			bufString := string(buf)
+			bufString := strings.Join(buf, " ")
+			checkString := strings.Join(buf, "-")
 			if len(buf) == 1 {
 				result <- bufString
 			} else {
-				if v, ok := seg.dict.Frequency(bufString); !ok || v == 0.0 {
+				if v, ok := seg.dict.Frequency(checkString); !ok || v == 0.0 {
 					for t := range finalseg.Cut(bufString) {
 						result <- t
 					}
@@ -230,7 +288,7 @@ func (seg *Segmenter) cutDAGNoHMM(sentence string) <-chan string {
 
 	go func() {
 		runes := []rune(sentence)
-		routes := seg.calc(runes)
+		routes := seg.calc_rune(runes)
 		var y int
 		length := len(runes)
 		var buf []rune
@@ -301,7 +359,7 @@ func (seg *Segmenter) cutAll(sentence string) <-chan string {
 	result := make(chan string)
 	go func() {
 		runes := []rune(sentence)
-		dag := seg.dag(runes)
+		dag := seg.dag_rune(runes)
 		start := -1
 		ks := make([]int, len(dag))
 		for k := range dag {
